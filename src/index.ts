@@ -14,6 +14,11 @@ import {
   IFCPOSITIVELENGTHMEASURE,
   IFCBUILDINGSTOREY,
   IFCGLOBALLYUNIQUEID,
+  IFCPROJECT,
+  IFCUNITASSIGNMENT,
+  IFCGEOMETRICREPRESENTATIONCONTEXT,
+  IFCDIMENSIONCOUNT,
+  IFCSIUNIT,
 } from "web-ifc/web-ifc-api.js";
 
 interface Building {
@@ -48,6 +53,75 @@ ifcAPI.Init().then(() => {
       ifcAPI.CreateIfcType(model, IFCREAL, 0),
       ifcAPI.CreateIfcType(model, IFCREAL, 1),
     ]);
+
+    const project = ifcAPI.CreateIfcEntity(
+      model,
+      IFCPROJECT,
+      ifcAPI.CreateIfcType(
+        model,
+        IFCGLOBALLYUNIQUEID,
+        "3e222ea2-6182-4577-a7eb-99245ef44066"
+      ),
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      [
+        ifcAPI.CreateIfcEntity(
+          model,
+          IFCGEOMETRICREPRESENTATIONCONTEXT,
+          null,
+          ifcAPI.CreateIfcType(model, IFCLABEL, "Model"),
+          ifcAPI.CreateIfcType(model, IFCDIMENSIONCOUNT, 3),
+          ifcAPI.CreateIfcType(model, IFCREAL, 0.00001),
+          ifcAPI.CreateIfcEntity(
+            model,
+            IFCAXIS2PLACEMENT3D,
+            createCartesianPoint(model, { x: 0, y: 0, z: 0 }),
+            ifcAPI.CreateIfcEntity(model, IFCDIRECTION, [
+              ifcAPI.CreateIfcType(model, IFCREAL, 0),
+              ifcAPI.CreateIfcType(model, IFCREAL, 0),
+              ifcAPI.CreateIfcType(model, IFCREAL, 1),
+            ]),
+            ifcAPI.CreateIfcEntity(model, IFCDIRECTION, [
+              ifcAPI.CreateIfcType(model, IFCREAL, 1),
+              ifcAPI.CreateIfcType(model, IFCREAL, 0),
+              ifcAPI.CreateIfcType(model, IFCREAL, 0),
+            ])
+          ),
+          ifcAPI.CreateIfcEntity(model, IFCDIRECTION, [
+            ifcAPI.CreateIfcType(model, IFCREAL, 0),
+            ifcAPI.CreateIfcType(model, IFCREAL, 1),
+          ])
+        ),
+      ],
+      ifcAPI.CreateIfcEntity(model, IFCUNITASSIGNMENT, [
+        ifcAPI.CreateIfcEntity(
+          model,
+          IFCSIUNIT,
+          IFC4.IfcUnitEnum.LENGTHUNIT,
+          null,
+          IFC4.IfcSIUnitName.METRE
+        ),
+        ifcAPI.CreateIfcEntity(
+          model,
+          IFCSIUNIT,
+          IFC4.IfcUnitEnum.AREAUNIT,
+          null,
+          IFC4.IfcSIUnitName.SQUARE_METRE
+        ),
+        ifcAPI.CreateIfcEntity(
+          model,
+          IFCSIUNIT,
+          IFC4.IfcUnitEnum.PLANEANGLEUNIT,
+          null,
+          IFC4.IfcSIUnitName.RADIAN
+        ),
+      ])
+    );
+    ifcAPI.WriteLine(model, project)
 
     // 遍历每栋楼
     buildings.forEach((building, index) => {
@@ -105,7 +179,11 @@ ifcAPI.Init().then(() => {
         const floor = ifcAPI.CreateIfcEntity(
           model,
           IFCBUILDINGSTOREY,
-          ifcAPI.CreateIfcType(model, IFCGLOBALLYUNIQUEID, "GUID"),
+          ifcAPI.CreateIfcType(
+            model,
+            IFCGLOBALLYUNIQUEID,
+            "1e4364c1-16de-4b13-8860-c4e0a3e53476"
+          ),
           null,
           ifcAPI.CreateIfcType(model, IFCLABEL, "name"),
           null,
