@@ -4,9 +4,11 @@
 		"build": "webpack --mode production"
 	},
 	"dependencies": {
+		"uuid": "^9.0.0",
 		"web-ifc": "^0.0.40"
 	},
 	"devDependencies": {
+		"@types/uuid": "^9.0.1",
 		"html-webpack-plugin": "^5.5.1",
 		"ts-loader": "^9.4.3",
 		"typescript": "^5.0.4",

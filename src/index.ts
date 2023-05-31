@@ -19,11 +19,30 @@ import {
   IFCGEOMETRICREPRESENTATIONCONTEXT,
   IFCDIMENSIONCOUNT,
   IFCSIUNIT,
+  IFCSITE,
+  IFCOWNERHISTORY,
+  IFCPERSONANDORGANIZATION,
+  IFCPERSON,
+  IFCORGANIZATION,
+  IFCAPPLICATION,
+  IFCIDENTIFIER,
+  IFCTEXT,
+  IFCTIMESTAMP,
+  IFCLOCALPLACEMENT,
+  IFCBUILDING,
 } from "web-ifc/web-ifc-api.js";
+import { v4 as uuid } from "uuid";
+
+interface Floor {
+  id: string;
+  name: string;
+  height: number;
+}
 
 interface Building {
-  floorCount: number;
-  floorHeight: number;
+  id: string;
+  name: string;
+  floors: Floor[];
   outline: Point[];
 }
 
@@ -48,11 +67,86 @@ ifcAPI.Init().then(() => {
       schema: Schemas.IFC2X3,
       name: "Model",
     });
+
+    const owningApplication = ifcAPI.CreateIfcEntity(
+      model,
+      IFCAPPLICATION,
+      ifcAPI.CreateIfcEntity(
+        model,
+        IFCORGANIZATION,
+        ifcAPI.CreateIfcType(model, IFCIDENTIFIER, "Glodon.Inc"),
+        ifcAPI.CreateIfcType(model, IFCLABEL, "Glodon"),
+        ifcAPI.CreateIfcType(model, IFCTEXT, "Glodon JSF"),
+        null,
+        null
+      )
+    );
+
     const zUpDirection = ifcAPI.CreateIfcEntity(model, IFCDIRECTION, [
       ifcAPI.CreateIfcType(model, IFCREAL, 0),
       ifcAPI.CreateIfcType(model, IFCREAL, 0),
       ifcAPI.CreateIfcType(model, IFCREAL, 1),
     ]);
+
+    const person = ifcAPI.CreateIfcEntity(
+      model,
+      IFCPERSON,
+      null,
+      ifcAPI.CreateIfcType(model, IFCLABEL, "Undefined"),
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    );
+
+    const organization = ifcAPI.CreateIfcEntity(
+      model,
+      IFCORGANIZATION,
+      null,
+      ifcAPI.CreateIfcType(model, IFCLABEL, "Glodon"),
+      null,
+      null,
+      null
+    );
+
+    const personAndOrganization = ifcAPI.CreateIfcEntity(
+      model,
+      IFCPERSONANDORGANIZATION,
+      person,
+      organization,
+      null
+    );
+
+    const ownerHistory = ifcAPI.CreateIfcEntity(
+      model,
+      IFCOWNERHISTORY,
+      personAndOrganization,
+      owningApplication,
+      null,
+      IFC4.IfcChangeActionEnum.NOCHANGE,
+      null,
+      null,
+      null,
+      ifcAPI.CreateIfcType(model, IFCTIMESTAMP, Math.round(Date.now() / 1000))
+    );
+
+    const axis = ifcAPI.CreateIfcEntity(
+      model,
+      IFCAXIS2PLACEMENT3D,
+      createCartesianPoint(model, { x: 0, y: 0, z: 0 }),
+      ifcAPI.CreateIfcEntity(model, IFCDIRECTION, [
+        ifcAPI.CreateIfcType(model, IFCREAL, 0),
+        ifcAPI.CreateIfcType(model, IFCREAL, 0),
+        ifcAPI.CreateIfcType(model, IFCREAL, 1),
+      ]),
+      ifcAPI.CreateIfcEntity(model, IFCDIRECTION, [
+        ifcAPI.CreateIfcType(model, IFCREAL, 1),
+        ifcAPI.CreateIfcType(model, IFCREAL, 0),
+        ifcAPI.CreateIfcType(model, IFCREAL, 0),
+      ])
+    );
 
     const project = ifcAPI.CreateIfcEntity(
       model,
@@ -62,7 +156,7 @@ ifcAPI.Init().then(() => {
         IFCGLOBALLYUNIQUEID,
         "3e222ea2-6182-4577-a7eb-99245ef44066"
       ),
-      null,
+      ownerHistory,
       null,
       null,
       null,
@@ -76,21 +170,7 @@ ifcAPI.Init().then(() => {
           ifcAPI.CreateIfcType(model, IFCLABEL, "Model"),
           ifcAPI.CreateIfcType(model, IFCDIMENSIONCOUNT, 3),
           ifcAPI.CreateIfcType(model, IFCREAL, 0.00001),
-          ifcAPI.CreateIfcEntity(
-            model,
-            IFCAXIS2PLACEMENT3D,
-            createCartesianPoint(model, { x: 0, y: 0, z: 0 }),
-            ifcAPI.CreateIfcEntity(model, IFCDIRECTION, [
-              ifcAPI.CreateIfcType(model, IFCREAL, 0),
-              ifcAPI.CreateIfcType(model, IFCREAL, 0),
-              ifcAPI.CreateIfcType(model, IFCREAL, 1),
-            ]),
-            ifcAPI.CreateIfcEntity(model, IFCDIRECTION, [
-              ifcAPI.CreateIfcType(model, IFCREAL, 1),
-              ifcAPI.CreateIfcType(model, IFCREAL, 0),
-              ifcAPI.CreateIfcType(model, IFCREAL, 0),
-            ])
-          ),
+          axis,
           ifcAPI.CreateIfcEntity(model, IFCDIRECTION, [
             ifcAPI.CreateIfcType(model, IFCREAL, 0),
             ifcAPI.CreateIfcType(model, IFCREAL, 1),
@@ -121,10 +201,65 @@ ifcAPI.Init().then(() => {
         ),
       ])
     );
-    ifcAPI.WriteLine(model, project)
+    ifcAPI.WriteLine(model, project);
+
+    const sitePlacement = ifcAPI.CreateIfcEntity(
+      model,
+      IFCLOCALPLACEMENT,
+      null,
+      axis
+    );
+
+    const site = ifcAPI.CreateIfcEntity(
+      model,
+      IFCSITE,
+      ifcAPI.CreateIfcType(
+        model,
+        IFCGLOBALLYUNIQUEID,
+        "dd30e384-4df5-4653-868d-67e90958acbc"
+      ),
+      ownerHistory,
+      ifcAPI.CreateIfcType(model, IFCLABEL, "Site"),
+      null,
+      null,
+      sitePlacement,
+      null,
+      null,
+      IFC4.IfcElementCompositionEnum.ELEMENT,
+      null,
+      null,
+      null,
+      null,
+      null
+    );
+
+    ifcAPI.WriteLine(model, site);
 
     // 遍历每栋楼
     buildings.forEach((building, index) => {
+      const buildingPlacement = ifcAPI.CreateIfcEntity(
+        model,
+        IFCLOCALPLACEMENT,
+        sitePlacement,
+        axis
+      );
+      const buildingEntity = ifcAPI.CreateIfcEntity(
+        model,
+        IFCBUILDING,
+        ifcAPI.CreateIfcType(model, IFCGLOBALLYUNIQUEID, building.id),
+        ownerHistory,
+        ifcAPI.CreateIfcType(model, IFCLABEL, building.name),
+        null,
+        null,
+        buildingPlacement,
+        null,
+        null,
+        IFC4.IfcElementCompositionEnum.ELEMENT,
+        null,
+        null,
+        null
+      );
+      ifcAPI.WriteLine(model, buildingEntity);
       const profileLabel = ifcAPI.CreateIfcType(
         model,
         IFCLABEL,
@@ -146,13 +281,12 @@ ifcAPI.Init().then(() => {
         profileLabel,
         polyline
       );
-      // 创建楼层实体
-      for (let floorIndex = 0; floorIndex < building.floorCount; floorIndex++) {
+      building.floors.reduce((elevation, floor) => {
         // 楼层的位置
         const location = createCartesianPoint(model, {
           x: 0,
           y: 0,
-          z: floorIndex * building.floorHeight,
+          z: elevation,
         });
         // 楼层的位置实体
         const placement = ifcAPI.CreateIfcEntity(
@@ -169,21 +303,13 @@ ifcAPI.Init().then(() => {
           profile,
           placement,
           zUpDirection,
-          ifcAPI.CreateIfcType(
-            model,
-            IFCPOSITIVELENGTHMEASURE,
-            building.floorHeight
-          )
+          ifcAPI.CreateIfcType(model, IFCPOSITIVELENGTHMEASURE, floor.height)
         );
         // 楼层实体
-        const floor = ifcAPI.CreateIfcEntity(
+        const buildingStorey = ifcAPI.CreateIfcEntity(
           model,
           IFCBUILDINGSTOREY,
-          ifcAPI.CreateIfcType(
-            model,
-            IFCGLOBALLYUNIQUEID,
-            "1e4364c1-16de-4b13-8860-c4e0a3e53476"
-          ),
+          ifcAPI.CreateIfcType(model, IFCGLOBALLYUNIQUEID, uuid()),
           null,
           ifcAPI.CreateIfcType(model, IFCLABEL, "name"),
           null,
@@ -195,16 +321,22 @@ ifcAPI.Init().then(() => {
           null
         );
         // 写入IFC模型
-        ifcAPI.WriteLine(model, floor);
-      }
+        ifcAPI.WriteLine(model, buildingStorey);
+        return elevation + floor.height;
+      }, 0);
     });
     return model;
   }
   // 定义建筑数据
-  const buildings = [
+  const buildings: Building[] = [
     {
-      floorCount: 5,
-      floorHeight: 3,
+      id: "d2d16430-c182-4f30-800e-5450e5097023",
+      name: "Building 1",
+      floors: new Array(6).fill(0).map((_, index) => ({
+        id: uuid(),
+        name: `Floor ${index + 1}`,
+        height: 3,
+      })),
       outline: [
         { x: 0, y: 0, z: 0 },
         { x: 10, y: 0, z: 0 },
@@ -213,8 +345,13 @@ ifcAPI.Init().then(() => {
       ],
     },
     {
-      floorCount: 26,
-      floorHeight: 3,
+      id: "e06f3956-73c3-4455-ad2d-f65cd22470f8",
+      name: "Building 2",
+      floors: new Array(20).fill(0).map((_, index) => ({
+        id: uuid(),
+        name: `Floor ${index + 1}`,
+        height: 3,
+      })),
       outline: [
         { x: 50, y: 100, z: 0 },
         { x: 70, y: 100, z: 0 },
